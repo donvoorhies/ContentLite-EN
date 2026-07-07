@@ -28,8 +28,8 @@ define('SITE_OG_IMAGE',  SITE_BASE_URL . '/assets/og-default.jpg');
 // ┌─────────────────────────────────────────────────────────────────────────────
 // │ 3. UPLOAD / GALLERI
 // └─────────────────────────────────────────────────────────────────────────────
-define('UPLOAD_DIR',    __DIR__ . '/uploads/galleri/');
-define('UPLOAD_URL',    '/uploads/galleri/');   // Rod-relativ URL
+define('UPLOAD_DIR',    __DIR__ . '/uploads/gallery/');
+define('UPLOAD_URL',    '/uploads/gallery/');   // Rod-relativ URL
 define('ALLOWED_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);       // 5 MB
 
@@ -57,8 +57,8 @@ define('ARTICLES_PER_PAGE', 5);
 // └─────────────────────────────────────────────────────────────────────────────
 define('SITE_NAV', [
     ['label' => 'Home',  'href' => '/index.php',   'match' => 'index'],
-    ['label' => 'News',  'href' => '/nyheder.php', 'match' => 'nyheder'],
-    ['label' => 'Gallery',  'href' => '/galleri.php', 'match' => 'galleri'],
+    ['label' => 'News',  'href' => '/news.php', 'match' => 'news'],
+    ['label' => 'Gallery',  'href' => '/gallery.php', 'match' => 'gallery'],
 ]);
 
 // ┌─────────────────────────────────────────────────────────────────────────────

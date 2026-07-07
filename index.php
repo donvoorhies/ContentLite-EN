@@ -6,19 +6,19 @@ require_once __DIR__ . '/config.php';
 
 $meta_title       = 'Home – ' . SITE_NAME;
 $meta_description = SITE_DESCRIPTION;
-$body_class       = 'side-forside';
+$body_class       = 'page-home';
 
 require __DIR__ . '/assets/_header.php';
 ?>
 
 <!--
-    Fra dette punkt er du inde i <main id="hoved-content">.
+    Fra dette punkt er du inde i <main id="main-content">.
     Brug semantiske HTML5-elementer (section, article, aside …).
     Layout styres 100 % af dit CSS-framework / /assets/site.css.
 -->
 
-<section aria-labelledby="velkommen-overskrift">
-    <h1 id="velkommen-overskrift">Welcome to <?= e(SITE_NAME) ?></h1>
+<section aria-labelledby="welcome-heading">
+    <h1 id="welcome-heading">Welcome to <?= e(SITE_NAME) ?></h1>
     <p>
         This is the homepage. Replace this content with your own.
         The main navigation and footer are shared across the site
@@ -27,12 +27,12 @@ require __DIR__ . '/assets/_header.php';
     </p>
 </section>
 
-<section aria-labelledby="seneste-nyheder-overskrift">
-    <h2 id="seneste-nyheder-overskrift">Latest news</h2>
+<section aria-labelledby="latest-news-heading">
+    <h2 id="latest-news-heading">Latest news</h2>
     <?php
     /*
-     * Valgfrit: træk de 3 seneste udgivne artikler ind på forsiden.
-     * Brug samme forberedte statement-mønster som nyheder.php.
+     * Valgfrit: træk de 3 latest udgivne articles ind på forsiden.
+     * Brug samme forberedte statement-mønster som news.php.
      */
     $tCms = table_name('cms_content');
     $stmt = db()->prepare(
@@ -41,21 +41,21 @@ require __DIR__ . '/assets/_header.php';
          ORDER BY updated_at DESC LIMIT 3"
     );
     $stmt->execute();
-    $seneste = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $latest = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
     ?>
-    <?php if (empty($seneste)): ?>
+    <?php if (empty($latest)): ?>
         <p>No news yet.</p>
     <?php else: ?>
     <ul>
-        <?php foreach ($seneste as $n): ?>
+        <?php foreach ($latest as $n): ?>
         <li>
-            <a href="nyheder.php?artikel=<?= $n['id'] ?>"><?= e($n['title']) ?></a>
+            <a href="news.php?article=<?= $n['id'] ?>"><?= e($n['title']) ?></a>
             <small>(<?= date('j. F Y', strtotime($n['updated_at'])) ?>)</small>
         </li>
         <?php endforeach; ?>
     </ul>
-    <p><a href="nyheder.php">View all news →</a></p>
+    <p><a href="news.php">View all news →</a></p>
     <?php endif; ?>
 </section>
 

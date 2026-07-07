@@ -269,7 +269,7 @@ function update_album(mysqli $db, int $id, string $name, string $description): b
 }
 
 function delete_album(mysqli $db, int $id): bool {
-    // Slet fysiske filer for alle billeder i albummet
+    // Slet fysiske filer for alle images i albummet
     $tAlbums = table_name('gallery_albums');
     $tBilleder = table_name('gallery_images');
     $stmt = $db->prepare("SELECT filename FROM {$tBilleder} WHERE album_id = ?");
@@ -372,7 +372,7 @@ function upload_image(mysqli $db, int $album_id, array $fil, string $title, stri
 }
 
 // ─── Actions / routing ────────────────────────────────────────────────────────
-$action  = $_GET['action'] ?? 'liste';
+$action  = $_GET['action'] ?? 'list';
 $message = '';
 $error   = '';
 
@@ -380,12 +380,12 @@ $error   = '';
 if ($action === 'login') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
-        $u = trim($_POST['brugernavn'] ?? '');
-        $p = trim($_POST['kodeord']    ?? '');
+        $u = trim($_POST['username'] ?? '');
+        $p = trim($_POST['password']    ?? '');
         if ($u === ADMIN_USER && password_verify($p, ADMIN_PASS_HASH)) {
             session_regenerate_id(true);
             $_SESSION['admin_logged_in'] = true;
-            header('Location: ?action=liste');
+            header('Location: ?action=list');
             exit;
         } else {
             $error = 'Incorrect username or password.';
@@ -402,17 +402,17 @@ if ($action === 'logout') {
 
 // Handlinger der kræver login
 $galleri_actions = [
-    'galleri', 'galleri-nyt-album', 'galleri-rediger-album',
-    'galleri-gem-album', 'galleri-slet-album',
-    'galleri-album', 'galleri-upload', 'galleri-rediger-billede',
-    'galleri-gem-billede', 'galleri-slet-billede',
+    'gallery', 'gallery-new-album', 'gallery-edit-album',
+    'gallery-save-album', 'gallery-delete-album',
+    'gallery-album', 'gallery-upload', 'gallery-edit-image',
+    'gallery-save-image', 'gallery-delete-image',
 ];
 
-if (in_array($action, ['liste', 'ny', 'rediger', 'gem', 'slet'], true)) {
+if (in_array($action, ['list', 'new', 'edit', 'save', 'delete'], true)) {
     require_login();
     $db = db();
 
-    if ($action === 'gem' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $title   = trim($_POST['title']   ?? '');
         // TinyMCE sender HTML – tillad sikre tags, strip alt andet
@@ -423,26 +423,26 @@ if (in_array($action, ['liste', 'ny', 'rediger', 'gem', 'slet'], true)) {
 
         if ($title === '' || !har_content($content)) {
             $error = 'Title and content must not be empty.';
-            $action = $id > 0 ? 'rediger' : 'ny';
+            $action = $id > 0 ? 'edit' : 'new';
         } elseif ($id > 0) {
             update_post($db, $id, $title, $content, $status);
             $message = 'Content updated.';
-            $action  = 'liste';
+            $action  = 'list';
         } else {
             create_post($db, $title, $content, $status);
             $message = 'New content created.';
-            $action  = 'liste';
+            $action  = 'list';
         }
     }
 
-    if ($action === 'slet' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $id = (int)($_POST['id'] ?? 0);
         if ($id > 0) {
             delete_post($db, $id);
             $message = 'Content deleted.';
         }
-        $action = 'liste';
+        $action = 'list';
     }
 }
 
@@ -452,45 +452,45 @@ if (in_array($action, $galleri_actions, true)) {
     $db = db();
 
     // Gem album (opret / opdater)
-    if ($action === 'galleri-gem-album' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'gallery-save-album' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $name        = trim($_POST['name']        ?? '');
         $description = trim($_POST['description'] ?? '');
         $id          = (int)($_POST['id'] ?? 0);
         if ($name === '') {
             $error  = 'Album name must not be empty.';
-            $action = $id > 0 ? 'galleri-rediger-album' : 'galleri-nyt-album';
+            $action = $id > 0 ? 'gallery-edit-album' : 'gallery-new-album';
         } elseif ($id > 0) {
             update_album($db, $id, $name, $description);
             $message = 'Album updated.';
-            $action  = 'galleri';
+            $action  = 'gallery';
         } else {
             create_album($db, $name, $description);
             $message = 'Album created.';
-            $action  = 'galleri';
+            $action  = 'gallery';
         }
     }
 
     // Slet album
-    if ($action === 'galleri-slet-album' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'gallery-delete-album' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $id = (int)($_POST['id'] ?? 0);
         if ($id > 0) { delete_album($db, $id); $message = 'Album deleted.'; }
-        $action = 'galleri';
+        $action = 'gallery';
     }
 
-    // Upload billede(r)
-    if ($action === 'galleri-upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Upload image(r)
+    if ($action === 'gallery-upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $album_id = (int)($_POST['album_id'] ?? 0);
-        $filer    = $_FILES['billeder'] ?? null;
+        $filer    = $_FILES['images'] ?? null;
         if ($album_id < 1 || !$filer) {
             $error = 'Invalid album or no files selected.';
         } else {
             $fejl = [];
             // Omstrukturer $_FILES til array af individuelle filer
-            $antal = count($filer['name']);
-            for ($i = 0; $i < $antal; $i++) {
+            $image_count = count($filer['name']);
+            for ($i = 0; $i < $image_count; $i++) {
                 if ($filer['error'][$i] === UPLOAD_ERR_NO_FILE) continue;
                 $enkelt = [
                     'name'     => $filer['name'][$i],
@@ -498,7 +498,7 @@ if (in_array($action, $galleri_actions, true)) {
                     'size'     => $filer['size'][$i],
                     'error'    => $filer['error'][$i],
                 ];
-                $title = trim($_POST['titler'][$i] ?? pathinfo($filer['name'][$i], PATHINFO_FILENAME));
+                $title = trim($_POST['titles'][$i] ?? pathinfo($filer['name'][$i], PATHINFO_FILENAME));
                 $e = upload_image($db, $album_id, $enkelt, $title, '');
                 if ($e) $fejl[] = htmlspecialchars($filer['name'][$i]) . ': ' . $e;
             }
@@ -508,12 +508,12 @@ if (in_array($action, $galleri_actions, true)) {
             if ($fejl) $error = $message;
             else       $message = $message;
         }
-        $action = 'galleri-album';
+        $action = 'gallery-album';
         $_GET['id'] = $album_id;
     }
 
     // Gem billedmeta
-    if ($action === 'galleri-gem-billede' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'gallery-save-image' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $id          = (int)($_POST['id']          ?? 0);
         $title       = trim($_POST['title']        ?? '');
@@ -524,17 +524,17 @@ if (in_array($action, $galleri_actions, true)) {
             update_image($db, $id, $title, $description, $sort_order);
             $message = 'Image updated.';
         }
-        $action     = 'galleri-album';
+        $action     = 'gallery-album';
         $_GET['id'] = $album_id;
     }
 
-    // Slet billede
-    if ($action === 'galleri-slet-billede' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Slet image
+    if ($action === 'gallery-delete-image' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_check();
         $id       = (int)($_POST['id']       ?? 0);
         $album_id = (int)($_POST['album_id'] ?? 0);
         if ($id > 0) { delete_image($db, $id); $message = 'Image deleted.'; }
-        $action     = 'galleri-album';
+        $action     = 'gallery-album';
         $_GET['id'] = $album_id;
     }
 }
@@ -542,21 +542,21 @@ if (in_array($action, $galleri_actions, true)) {
 // ─── HTML-output ──────────────────────────────────────────────────────────────
 $page_title = match($action) {
     'login'                 => 'Log in',
-    'ny'                    => 'New content',
-    'rediger'               => 'Edit content',
-    'galleri'               => 'Gallery – albums',
-    'galleri-nyt-album'     => 'New album',
-    'galleri-rediger-album' => 'Edit album',
-    'galleri-album'         => 'Album',
-    'galleri-rediger-billede' => 'Edit image',
+    'new'                    => 'New content',
+    'edit'               => 'Edit content',
+    'gallery'               => 'Gallery – albums',
+    'gallery-new-album'     => 'New album',
+    'gallery-edit-album' => 'Edit album',
+    'gallery-album'         => 'Album',
+    'gallery-edit-image' => 'Edit image',
     default                 => 'Content overview',
 };
 
 $edit_post = null;
-if ($action === 'rediger' && isset($db)) {
+if ($action === 'edit' && isset($db)) {
     $edit_id   = (int)($_GET['id'] ?? 0);
     $edit_post = fetch_post($db, $edit_id);
-    if (!$edit_post) { $action = 'liste'; }
+    if (!$edit_post) { $action = 'list'; }
 }
 ?>
 <!DOCTYPE html>
@@ -982,7 +982,7 @@ textarea { min-height: 220px; resize: vertical; line-height: 1.7; }
     background: var(--bg);
 }
 
-/* ── Galleri: Billedgitter / -liste ── */
+/* ── Galleri: Billedgitter / -list ── */
 .view-toggle { display: flex; gap: .4rem; }
 .view-btn {
     background: var(--surface);
@@ -998,12 +998,12 @@ textarea { min-height: 220px; resize: vertical; line-height: 1.7; }
 .view-btn.active, .view-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* Grid-visning */
-.billede-grid {
+.image-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: .75rem;
 }
-.billede-kort {
+.image-kort {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -1013,22 +1013,22 @@ textarea { min-height: 220px; resize: vertical; line-height: 1.7; }
     display: flex;
     flex-direction: column;
 }
-.billede-kort:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
-.billede-thumb {
+.image-kort:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.image-thumb {
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
     display: block;
     background: var(--bg);
 }
-.billede-meta {
+.image-meta {
     padding: .5rem .65rem;
     font-size: .75rem;
     flex: 1;
 }
-.billede-meta strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.billede-meta span   { color: var(--muted); }
-.billede-actions {
+.image-meta strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.image-meta span   { color: var(--muted); }
+.image-actions {
     display: flex;
     gap: .35rem;
     padding: .45rem .65rem;
@@ -1037,10 +1037,10 @@ textarea { min-height: 220px; resize: vertical; line-height: 1.7; }
 }
 
 /* Liste-visning */
-.billede-liste { display: none; }
-.billede-liste.vis { display: block; }
-.billede-grid.vis  { display: grid; }
-.billede-grid.skjul { display: none; }
+.image-list { display: none; }
+.image-list.vis { display: block; }
+.image-grid.vis  { display: grid; }
+.image-grid.skjul { display: none; }
 
 /* Upload-zone */
 .upload-zone {
@@ -1114,12 +1114,12 @@ textarea { min-height: 220px; resize: vertical; line-height: 1.7; }
 /* ── Galleri RWD ── */
 @media (max-width: 767px) {
     .album-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-    .billede-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .image-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
     .upload-zone { padding: 1.25rem 1rem; }
 }
 @media (max-width: 479px) {
     .album-grid { grid-template-columns: 1fr 1fr; gap: .6rem; }
-    .billede-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .image-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
 }
 </style>
 </head>
@@ -1132,9 +1132,9 @@ textarea { min-height: 220px; resize: vertical; line-height: 1.7; }
         <span></span><span></span><span></span>
     </button>
     <nav id="mainNav">
-        <a href="?action=liste"   class="<?= $action === 'liste'                                    ? 'active' : '' ?>">Content</a>
-        <a href="?action=ny"      class="<?= $action === 'ny'                                       ? 'active' : '' ?>">New content</a>
-        <a href="?action=galleri" class="<?= str_starts_with($action, 'galleri')                    ? 'active' : '' ?>">Gallery</a>
+        <a href="?action=list"   class="<?= $action === 'list'                                    ? 'active' : '' ?>">Content</a>
+        <a href="?action=new"      class="<?= $action === 'new'                                       ? 'active' : '' ?>">New content</a>
+        <a href="?action=gallery" class="<?= str_starts_with($action, 'gallery')                    ? 'active' : '' ?>">Gallery</a>
         <a href="?action=logout">Log out</a>
     </nav>
 </header>
@@ -1159,13 +1159,13 @@ if ($action === 'login'): ?>
     <form method="post" action="?action=login" autocomplete="off">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <div class="form-group">
-            <label for="brugernavn">Username</label>
-            <input type="text" id="brugernavn" name="brugernavn" required autofocus
-                   value="<?= htmlspecialchars($_POST['brugernavn'] ?? '') ?>">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus
+                   value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
         </div>
         <div class="form-group">
-            <label for="kodeord">Password</label>
-            <input type="password" id="kodeord" name="kodeord" required>
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
         </div>
         <button type="submit" class="btn btn-primary" style="width:100%">Log in</button>
     </form>
@@ -1177,17 +1177,17 @@ if ($action === 'login'): ?>
 // ══════════════════════════════════════════
 // VIEW: LISTE
 // ══════════════════════════════════════════
-elseif ($action === 'liste'):
+elseif ($action === 'list'):
     $poster = fetch_all_posts($db);
 ?>
 <div class="toolbar">
     <h1>Content <span style="color:var(--muted);font-weight:400;font-size:1rem">(<?= count($poster) ?>)</span></h1>
-    <a href="?action=ny" class="btn btn-primary">+ New content</a>
+    <a href="?action=new" class="btn btn-primary">+ New content</a>
 </div>
 <div class="card">
 <?php if (empty($poster)): ?>
     <p style="padding:2rem;text-align:center;color:var(--muted);font-size:.9rem">
-        No content yet. <a href="?action=ny" style="color:var(--accent)">Create the first one</a>.
+        No content yet. <a href="?action=new" style="color:var(--accent)">Create the first one</a>.
     </p>
 <?php else: ?>
     <table>
@@ -1215,8 +1215,8 @@ elseif ($action === 'liste'):
                 </td>
                 <td>
                     <div class="tbl-actions">
-                        <a href="?action=rediger&id=<?= $p['id'] ?>" class="btn-sm btn-edit">Edit</a>
-                        <form method="post" action="?action=slet" style="display:inline"
+                        <a href="?action=edit&id=<?= $p['id'] ?>" class="btn-sm btn-edit">Edit</a>
+                        <form method="post" action="?action=delete" style="display:inline"
                               onsubmit="return confirm('Delete \'<?= addslashes(htmlspecialchars($p['title'])) ?>\'?')">
                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             <input type="hidden" name="id" value="<?= $p['id'] ?>">
@@ -1235,8 +1235,8 @@ elseif ($action === 'liste'):
 // ══════════════════════════════════════════
 // VIEW: NY / REDIGER
 // ══════════════════════════════════════════
-elseif (in_array($action, ['ny', 'rediger'], true)):
-    $is_edit = $action === 'rediger' && $edit_post;
+elseif (in_array($action, ['new', 'edit'], true)):
+    $is_edit = $action === 'edit' && $edit_post;
     $v_title   = htmlspecialchars($edit_post['title']   ?? ($_POST['title']   ?? ''));
     // Indhold er HTML fra TinyMCE – må ikke escapes igen her
     $v_content = $edit_post['content'] ?? ($_POST['content'] ?? '');
@@ -1245,7 +1245,7 @@ elseif (in_array($action, ['ny', 'rediger'], true)):
 <h1><?= $is_edit ? 'Edit content' : 'New content' ?></h1>
 <?php if ($error): ?><div class="err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 <div class="card form-card">
-    <form method="post" action="?action=gem">
+    <form method="post" action="?action=save">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <?php if ($is_edit): ?>
             <input type="hidden" name="id" value="<?= (int)$edit_post['id'] ?>">
@@ -1274,7 +1274,7 @@ elseif (in_array($action, ['ny', 'rediger'], true)):
             <button type="submit" class="btn btn-primary">
                 <?= $is_edit ? 'Save changes' : 'Create content' ?>
             </button>
-            <a href="?action=liste" class="btn btn-ghost">Cancel</a>
+            <a href="?action=list" class="btn btn-ghost">Cancel</a>
             <?php if ($is_edit): ?>
                 <span style="margin-left:auto;font-size:.78rem;color:var(--muted)">
                     Created: <?= htmlspecialchars(date('d.m.Y H:i', strtotime($edit_post['created_at']))) ?>
@@ -1290,25 +1290,25 @@ elseif (in_array($action, ['ny', 'rediger'], true)):
 // ══════════════════════════════════════════
 // VIEW: GALLERI – ALBUMOVERSIGT
 // ══════════════════════════════════════════
-if ($action === 'galleri'):
+if ($action === 'gallery'):
     $albums = fetch_all_albums($db);
 ?>
 <div class="toolbar">
     <h1>Gallery <span style="color:var(--muted);font-weight:400;font-size:1rem">(<?= count($albums) ?> albums)</span></h1>
-    <a href="?action=galleri-nyt-album" class="btn btn-primary">+ New album</a>
+    <a href="?action=gallery-new-album" class="btn btn-primary">+ New album</a>
 </div>
 <?php if (empty($albums)): ?>
 <div class="card" style="padding:2rem;text-align:center;color:var(--muted);font-size:.9rem">
-    No albums yet. <a href="?action=galleri-nyt-album" style="color:var(--accent)">Create the first one</a>.
+    No albums yet. <a href="?action=gallery-new-album" style="color:var(--accent)">Create the first one</a>.
 </div>
 <?php else: ?>
 <div class="album-grid">
 <?php foreach ($albums as $alb):
-    $billeder = fetch_images_in_album($db, $alb['id']);
-    $forste   = $billeder[0] ?? null;
+    $images = fetch_images_in_album($db, $alb['id']);
+    $forste   = $images[0] ?? null;
 ?>
     <div class="album-card">
-        <a href="?action=galleri-album&id=<?= $alb['id'] ?>" class="album-thumb" style="text-decoration:none">
+        <a href="?action=gallery-album&id=<?= $alb['id'] ?>" class="album-thumb" style="text-decoration:none">
             <?php if ($forste): ?>
                 <img src="<?= htmlspecialchars(UPLOAD_URL . $forste['filename']) ?>"
                      alt="<?= htmlspecialchars($forste['title']) ?>">
@@ -1324,9 +1324,9 @@ if ($action === 'galleri'):
             <?php endif; ?>
         </div>
         <div class="album-footer">
-            <a href="?action=galleri-album&id=<?= $alb['id'] ?>" class="btn-sm btn-edit" style="flex:1;text-align:center">Open</a>
-            <a href="?action=galleri-rediger-album&id=<?= $alb['id'] ?>" class="btn-sm btn-edit">Edit</a>
-            <form method="post" action="?action=galleri-slet-album"
+            <a href="?action=gallery-album&id=<?= $alb['id'] ?>" class="btn-sm btn-edit" style="flex:1;text-align:center">Open</a>
+            <a href="?action=gallery-edit-album&id=<?= $alb['id'] ?>" class="btn-sm btn-edit">Edit</a>
+            <form method="post" action="?action=gallery-delete-album"
                 onsubmit="return confirm('Delete the album and all its images?')">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id" value="<?= $alb['id'] ?>">
@@ -1342,12 +1342,12 @@ if ($action === 'galleri'):
 // ══════════════════════════════════════════
 // VIEW: NY / REDIGER ALBUM
 // ══════════════════════════════════════════
-elseif (in_array($action, ['galleri-nyt-album','galleri-rediger-album'], true)):
-    $is_edit  = $action === 'galleri-rediger-album';
+elseif (in_array($action, ['gallery-new-album','gallery-edit-album'], true)):
+    $is_edit  = $action === 'gallery-edit-album';
     $edit_alb = null;
     if ($is_edit) {
         $edit_alb = fetch_album($db, (int)($_GET['id'] ?? 0));
-        if (!$edit_alb) { header('Location: ?action=galleri'); exit; }
+        if (!$edit_alb) { header('Location: ?action=gallery'); exit; }
     }
     $v_navn = htmlspecialchars($edit_alb['name'] ?? ($_POST['name'] ?? ''));
     $v_besk = htmlspecialchars($edit_alb['description'] ?? ($_POST['description'] ?? ''));
@@ -1355,7 +1355,7 @@ elseif (in_array($action, ['galleri-nyt-album','galleri-rediger-album'], true)):
 <h1><?= $is_edit ? 'Edit album' : 'New album' ?></h1>
 <?php if ($error): ?><div class="err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 <div class="card form-card">
-    <form method="post" action="?action=galleri-gem-album">
+    <form method="post" action="?action=gallery-save-album">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <?php if ($is_edit): ?>
             <input type="hidden" name="id" value="<?= (int)$edit_alb['id'] ?>">
@@ -1371,7 +1371,7 @@ elseif (in_array($action, ['galleri-nyt-album','galleri-rediger-album'], true)):
         </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-primary"><?= $is_edit ? 'Save changes' : 'Create album' ?></button>
-            <a href="?action=galleri" class="btn btn-ghost">Cancel</a>
+            <a href="?action=gallery" class="btn btn-ghost">Cancel</a>
         </div>
     </form>
 </div>
@@ -1380,17 +1380,17 @@ elseif (in_array($action, ['galleri-nyt-album','galleri-rediger-album'], true)):
 // ══════════════════════════════════════════
 // VIEW: ALBUM – BILLEDOVERSIGT + UPLOAD
 // ══════════════════════════════════════════
-elseif ($action === 'galleri-album'):
+elseif ($action === 'gallery-album'):
     $album_id  = (int)($_GET['id'] ?? 0);
     $album     = fetch_album($db, $album_id);
-    if (!$album) { header('Location: ?action=galleri'); exit; }
-    $billeder  = fetch_images_in_album($db, $album_id);
+    if (!$album) { header('Location: ?action=gallery'); exit; }
+    $images  = fetch_images_in_album($db, $album_id);
 ?>
 <div class="toolbar" style="flex-wrap:wrap;gap:.75rem">
     <div>
         <h1><?= htmlspecialchars($album['name']) ?></h1>
         <p style="font-size:.82rem;color:var(--muted);margin-top:.15rem">
-            <?= count($billeder) ?> image<?= count($billeder) != 1 ? 's' : '' ?>
+            <?= count($images) ?> image<?= count($images) != 1 ? 's' : '' ?>
             <?php if ($album['description']): ?>
                 &nbsp;·&nbsp; <?= htmlspecialchars(mb_strimwidth($album['description'], 0, 80, '…')) ?>
             <?php endif; ?>
@@ -1401,19 +1401,19 @@ elseif ($action === 'galleri-album'):
             <button class="view-btn active" id="btnGrid" title="Grid view">⊞</button>
             <button class="view-btn"        id="btnListe" title="List view">☰</button>
         </div>
-        <a href="?action=galleri-rediger-album&id=<?= $album_id ?>" class="btn btn-ghost" style="font-size:.82rem">Edit album</a>
-        <a href="?action=galleri" class="btn btn-ghost" style="font-size:.82rem">← All albums</a>
+        <a href="?action=gallery-edit-album&id=<?= $album_id ?>" class="btn btn-ghost" style="font-size:.82rem">Edit album</a>
+        <a href="?action=gallery" class="btn btn-ghost" style="font-size:.82rem">← All albums</a>
     </div>
 </div>
 
 <!-- Upload-sektion -->
 <div class="card form-card" style="margin-bottom:1.5rem">
-    <form method="post" action="?action=galleri-upload" enctype="multipart/form-data" id="uploadForm">
+    <form method="post" action="?action=gallery-upload" enctype="multipart/form-data" id="uploadForm">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <input type="hidden" name="album_id"   value="<?= $album_id ?>">
         <label style="margin-bottom:.5rem;display:block">Upload images</label>
         <div class="upload-zone" id="uploadZone">
-            <input type="file" name="billeder[]" id="filInput" multiple accept="image/*">
+            <input type="file" name="images[]" id="filInput" multiple accept="image/*">
             <button type="button" class="btn btn-ghost" onclick="document.getElementById('filInput').click()">
                 Choose files
             </button>
@@ -1427,29 +1427,29 @@ elseif ($action === 'galleri-album'):
     </form>
 </div>
 
-<?php if (empty($billeder)): ?>
+<?php if (empty($images)): ?>
 <p style="color:var(--muted);font-size:.9rem;text-align:center;padding:1.5rem 0">
     No images in this album yet — upload the first one above.
 </p>
 <?php else: ?>
 
 <!-- GITTERVISNING -->
-<div class="billede-grid vis" id="gridView">
-<?php foreach ($billeder as $b): ?>
-    <div class="billede-kort">
+<div class="image-grid vis" id="gridView">
+<?php foreach ($images as $b): ?>
+    <div class="image-kort">
         <img src="<?= htmlspecialchars(UPLOAD_URL . $b['filename']) ?>"
              alt="<?= htmlspecialchars($b['title']) ?>"
-             class="billede-thumb"
+             class="image-thumb"
              onclick="openLightbox('<?= htmlspecialchars(UPLOAD_URL . $b['filename'], ENT_QUOTES) ?>')"
              style="cursor:zoom-in">
-        <div class="billede-meta">
+        <div class="image-meta">
             <strong title="<?= htmlspecialchars($b['title']) ?>"><?= htmlspecialchars($b['title'] ?: '(untitled)') ?></strong>
             <span>sort order: <?= (int)$b['sort_order'] ?></span>
         </div>
-        <div class="billede-actions">
-            <a href="?action=galleri-rediger-billede&id=<?= $b['id'] ?>&album_id=<?= $album_id ?>"
+        <div class="image-actions">
+            <a href="?action=gallery-edit-image&id=<?= $b['id'] ?>&album_id=<?= $album_id ?>"
                     class="btn-sm btn-edit" style="flex:1;text-align:center">Edit</a>
-            <form method="post" action="?action=galleri-slet-billede"
+            <form method="post" action="?action=gallery-delete-image"
                         onsubmit="return confirm('Delete this image permanently?')">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="id"       value="<?= $b['id'] ?>">
@@ -1462,7 +1462,7 @@ elseif ($action === 'galleri-album'):
 </div>
 
 <!-- LISTEVISNING -->
-<div class="card billede-liste" id="listeView">
+<div class="card image-list" id="listeView">
     <table>
         <thead>
             <tr>
@@ -1475,7 +1475,7 @@ elseif ($action === 'galleri-album'):
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($billeder as $b): ?>
+        <?php foreach ($images as $b): ?>
             <tr>
                 <td>
                     <img src="<?= htmlspecialchars(UPLOAD_URL . $b['filename']) ?>"
@@ -1492,9 +1492,9 @@ elseif ($action === 'galleri-album'):
                 </td>
                 <td>
                     <div class="tbl-actions">
-                        <a href="?action=galleri-rediger-billede&id=<?= $b['id'] ?>&album_id=<?= $album_id ?>"
+                        <a href="?action=gallery-edit-image&id=<?= $b['id'] ?>&album_id=<?= $album_id ?>"
                                     class="btn-sm btn-edit">Edit</a>
-                        <form method="post" action="?action=galleri-slet-billede"
+                        <form method="post" action="?action=gallery-delete-image"
                                         onsubmit="return confirm('Delete this image permanently?')">
                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             <input type="hidden" name="id"       value="<?= $b['id'] ?>">
@@ -1520,48 +1520,48 @@ elseif ($action === 'galleri-album'):
 // ══════════════════════════════════════════
 // VIEW: REDIGER BILLEDE
 // ══════════════════════════════════════════
-elseif ($action === 'galleri-rediger-billede'):
+elseif ($action === 'gallery-edit-image'):
     $bid      = (int)($_GET['id']       ?? 0);
     $album_id = (int)($_GET['album_id'] ?? 0);
-    $billede  = fetch_image($db, $bid);
-    if (!$billede) { header("Location: ?action=galleri-album&id=$album_id"); exit; }
+    $image  = fetch_image($db, $bid);
+    if (!$image) { header("Location: ?action=gallery-album&id=$album_id"); exit; }
 ?>
 <h1>Edit image</h1>
 <?php if ($error): ?><div class="err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start">
-    <img src="<?= htmlspecialchars(UPLOAD_URL . $billede['filename']) ?>"
-         alt="<?= htmlspecialchars($billede['title']) ?>"
+    <img src="<?= htmlspecialchars(UPLOAD_URL . $image['filename']) ?>"
+         alt="<?= htmlspecialchars($image['title']) ?>"
          style="width:220px;height:220px;object-fit:cover;border-radius:var(--radius);
                 border:1px solid var(--border);flex-shrink:0">
     <div class="card form-card" style="flex:1;min-width:260px">
-        <form method="post" action="?action=galleri-gem-billede">
+        <form method="post" action="?action=gallery-save-image">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <input type="hidden" name="id"       value="<?= (int)$billede['id'] ?>">
+            <input type="hidden" name="id"       value="<?= (int)$image['id'] ?>">
             <input type="hidden" name="album_id" value="<?= $album_id ?>">
             <div class="form-group">
                 <label for="b_title">Title</label>
                 <input type="text" id="b_title" name="title"
-                       value="<?= htmlspecialchars($billede['title']) ?>" placeholder="Image title">
+                       value="<?= htmlspecialchars($image['title']) ?>" placeholder="Image title">
             </div>
             <div class="form-group">
                 <label for="b_besk">Description</label>
                 <textarea id="b_besk" name="description" style="min-height:90px"
-                          placeholder="Optional image description…"><?= htmlspecialchars($billede['description'] ?? '') ?></textarea>
+                          placeholder="Optional image description…"><?= htmlspecialchars($image['description'] ?? '') ?></textarea>
             </div>
             <div class="form-group" style="max-width:140px">
                 <label for="b_sort">Sort order</label>
                 <input type="number" id="b_sort" name="sort_order" min="0"
-                       value="<?= (int)$billede['sort_order'] ?>">
+                       value="<?= (int)$image['sort_order'] ?>">
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Save changes</button>
-                <a href="?action=galleri-album&id=<?= $album_id ?>" class="btn btn-ghost">Cancel</a>
+                <a href="?action=gallery-album&id=<?= $album_id ?>" class="btn btn-ghost">Cancel</a>
             </div>
         </form>
     </div>
 </div>
 
-<?php endif; // ── galleri views slut ──
+<?php endif; // ── gallery views slut ──
 ?>
 
 <?php if ($action !== 'login'): ?>
@@ -1588,7 +1588,7 @@ elseif ($action === 'galleri-rediger-billede'):
     });
 })();
 
-// ── Galleri: grid / liste skift ───────────────────────────────────────────────
+// ── Galleri: grid / list skift ───────────────────────────────────────────────
 (function () {
     var btnGrid   = document.getElementById('btnGrid');
     var btnListe  = document.getElementById('btnListe');
@@ -1597,13 +1597,13 @@ elseif ($action === 'galleri-rediger-billede'):
     if (!btnGrid) return;
 
     var pref = localStorage.getItem('galleryView') || 'grid';
-    saetVisning(pref);
+    setView(pref);
 
-    btnGrid.addEventListener('click',  function () { saetVisning('grid');  localStorage.setItem('galleryView','grid');  });
-    btnListe.addEventListener('click', function () { saetVisning('liste'); localStorage.setItem('galleryView','liste'); });
+    btnGrid.addEventListener('click',  function () { setView('grid');  localStorage.setItem('galleryView','grid');  });
+    btnListe.addEventListener('click', function () { setView('list'); localStorage.setItem('galleryView','list'); });
 
-    function saetVisning(v) {
-        if (v === 'liste') {
+    function setView(v) {
+        if (v === 'list') {
             gridView  && gridView.classList.remove('vis');
             listeView && listeView.classList.add('vis');
             btnGrid.classList.remove('active');
@@ -1630,21 +1630,21 @@ elseif ($action === 'galleri-rediger-billede'):
     zone.addEventListener('drop', function (e) {
         e.preventDefault();
         zone.classList.remove('drag-over');
-        haandterFiler(e.dataTransfer.files);
+        handleFiles(e.dataTransfer.files);
     });
-    input.addEventListener('change', function () { haandterFiler(this.files); });
+    input.addEventListener('change', function () { handleFiles(this.files); });
 
     var valgte = [];
 
-    function haandterFiler(filer) {
+    function handleFiles(filer) {
         for (var i = 0; i < filer.length; i++) {
             if (filer[i].type.startsWith('image/')) valgte.push(filer[i]);
         }
-        opdaterPreview();
-        opdaterInput();
+        updatePreview();
+        updateInput();
     }
 
-    function opdaterPreview() {
+    function updatePreview() {
         preview.innerHTML = '';
         if (!valgte.length) { actions.style.display = 'none'; return; }
         actions.style.display = '';
@@ -1655,20 +1655,20 @@ elseif ($action === 'galleri-rediger-billede'):
             item.innerHTML =
                 '<img src="' + url + '" alt="">' +
                 '<button type="button" class="upload-remove" data-idx="' + idx + '">×</button>' +
-                '<input type="text" name="titler[]" placeholder="Title…" value="' +
+                '<input type="text" name="titles[]" placeholder="Title…" value="' +
                     fil.name.replace(/\.[^.]+$/, '').replace(/[<>"]/g, '') + '">';
             preview.appendChild(item);
         });
         preview.querySelectorAll('.upload-remove').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 valgte.splice(parseInt(this.dataset.idx), 1);
-                opdaterPreview();
-                opdaterInput();
+                updatePreview();
+                updateInput();
             });
         });
     }
 
-    function opdaterInput() {
+    function updateInput() {
         var dt = new DataTransfer();
         valgte.forEach(function (f) { dt.items.add(f); });
         input.files = dt.files;
@@ -1676,7 +1676,7 @@ elseif ($action === 'galleri-rediger-billede'):
 
     var rydBtn = document.getElementById('btnRydPreview');
     if (rydBtn) rydBtn.addEventListener('click', function () {
-        valgte = []; opdaterPreview(); opdaterInput();
+        valgte = []; updatePreview(); updateInput();
     });
 })();
 
@@ -1696,7 +1696,7 @@ document.addEventListener('keydown', function (e) {
 });
 </script>
 
-<?php if (in_array($action, ['ny', 'rediger'], true)): ?>
+<?php if (in_array($action, ['new', 'edit'], true)): ?>
 <!-- TinyMCE – community-udgave via jsDelivr CDN (ingen API-nøgle krævet) -->
 <script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
@@ -1745,7 +1745,7 @@ tinymce.init({
         });
     },
 
-    // Sørg for at TinyMCE gemmer content tilbage til textarea ved formularindsendelse
+    // Sørg for at TinyMCE gemmer content back til textarea ved formularindsendelse
     setup: function (editor) {
         editor.on('change', function () { editor.save(); });
 
@@ -1763,8 +1763,8 @@ tinymce.init({
 });
 
 // Tving TinyMCE til at gemme content til textarea inden formularindsendelse
-document.querySelector('form[action="?action=gem"]') &&
-document.querySelector('form[action="?action=gem"]').addEventListener('submit', function () {
+document.querySelector('form[action="?action=save"]') &&
+document.querySelector('form[action="?action=save"]').addEventListener('submit', function () {
     tinymce.triggerSave();
 
     // Simpel klientside-validering

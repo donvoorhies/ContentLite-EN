@@ -31,7 +31,7 @@ function fetch_album(int $id): ?array {
     return $row ?: null;
 }
 
-function fetch_imager(int $album_id): array {
+function fetch_images(int $album_id): array {
     $tBilleder = table_name('gallery_images');
     $stmt = db()->prepare(
         "SELECT id, filename, title, description
@@ -62,13 +62,13 @@ function first_image(int $album_id): ?array {
 // ─── Routing ──────────────────────────────────────────────────────────────────
 $album_id = isset($_GET['album']) ? (int)$_GET['album'] : 0;
 $album    = null;
-$billeder = [];
+$images = [];
 $albums   = [];
 
 if ($album_id > 0) {
     $album = fetch_album($album_id);
-    if (!$album) { header('Location: galleri.php', true, 302); exit; }
-    $billeder = fetch_imager($album_id);
+    if (!$album) { header('Location: gallery.php', true, 302); exit; }
+    $images = fetch_images($album_id);
     $meta_title       = e($album['name']) . ' – Gallery – ' . SITE_NAME;
     $meta_description = $album['description']
         ? e(mb_strimwidth($album['description'], 0, 160, '…'))
@@ -78,21 +78,21 @@ if ($album_id > 0) {
     $meta_title       = 'Gallery – ' . SITE_NAME;
     $meta_description = SITE_DESCRIPTION;
 }
-$body_class = 'side-galleri';
+$body_class = 'page-gallery';
 
 // ─── Sidefil-specifik CSS ─────────────────────────────────────────────────────
-$ekstra_css = <<<CSS
+$extra_css = <<<CSS
 <style>
 /*
- * Galleri-specifikke styles.
+ * Gallery page styles.
  * Bruger kun CSS custom properties fra :root i _header.php.
  * Tilpas / overstyr frit i /assets/site.css.
  */
 
 /* ── Tilbage-link ── */
-.tilbage-link { display: inline-block; margin-bottom: var(--afstand-lg);
+.back-link { display: inline-block; margin-bottom: var(--afstand-lg);
                 color: var(--farve-dæmpet); text-decoration: none; font-size: .875rem; }
-.tilbage-link:hover { color: var(--farve-tekst); }
+.back-link:hover { color: var(--farve-tekst); }
 
 /* ════════════════════════════════════
    ALBUMOVERSIGT
@@ -102,7 +102,7 @@ $ekstra_css = <<<CSS
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: var(--afstand-lg);
 }
-.album-kort {
+.album-card {
     display: block;
     text-decoration: none;
     color: var(--farve-tekst);
@@ -113,17 +113,17 @@ $ekstra_css = <<<CSS
     box-shadow: var(--skygge-sm);
     transition: box-shadow .2s, transform .2s;
 }
-.album-kort:hover {
+.album-card:hover {
     box-shadow: var(--skygge-md);
     transform: translateY(-2px);
     text-decoration: none;
 }
-.album-forside {
+.album-cover {
     width: 100%; aspect-ratio: 16/10;
     object-fit: cover; display: block;
     background: var(--farve-kant);
 }
-.album-forside-tom {
+.album-cover-tom {
     width: 100%; aspect-ratio: 16/10;
     background: var(--farve-overflade);
     display: flex; align-items: center;
@@ -133,41 +133,41 @@ $ekstra_css = <<<CSS
 .album-body       { padding: var(--afstand-md); }
 .album-body h2    { margin: 0 0 .25rem; font-size: 1rem; font-weight: 600; }
 .album-body .meta { font-size: .78rem; color: var(--farve-dæmpet); }
-.album-body .besk { font-size: .85rem; color: var(--farve-dæmpet);
+.album-body .description { font-size: .85rem; color: var(--farve-dæmpet);
                     margin-top: .35rem; line-height: 1.5; }
 
 /* ════════════════════════════════════
    BILLEDGITTER
    ════════════════════════════════════ */
-.billede-grid {
+.image-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: .75rem;
 }
-.billede-item {
+.image-item {
     position: relative; overflow: hidden;
     border-radius: var(--radius);
     border: 1px solid var(--farve-kant);
     aspect-ratio: 1; cursor: zoom-in;
     background: var(--farve-overflade);
 }
-.billede-item img {
+.image-item img {
     width: 100%; height: 100%; object-fit: cover; display: block;
     transition: transform .3s, filter .3s;
 }
-.billede-item:hover img {
+.image-item:hover img {
     transform: scale(1.04); filter: brightness(.9);
 }
-.billede-overlay {
+.image-overlay {
     position: absolute; bottom: 0; left: 0; right: 0;
     background: linear-gradient(transparent, rgba(0,0,0,.65));
     color: #fff; padding: .9rem .7rem .6rem;
     font-size: .78rem; opacity: 0; transition: opacity .2s;
     pointer-events: none;
 }
-.billede-item:hover .billede-overlay { opacity: 1; }
-.billede-overlay strong { display: block; font-weight: 500; }
-.billede-overlay span   { font-size: .72rem; opacity: .8; }
+.image-item:hover .image-overlay { opacity: 1; }
+.image-overlay strong { display: block; font-weight: 500; }
+.image-overlay span   { font-size: .72rem; opacity: .8; }
 
 /* ════════════════════════════════════
    LIGHTBOX
@@ -217,12 +217,12 @@ $ekstra_css = <<<CSS
 /* ── Responsiv ── */
 @media (max-width: 767px) {
     .album-grid   { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-    .billede-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .5rem; }
+    .image-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .5rem; }
     .lb-pil       { display: none; }
 }
 @media (max-width: 479px) {
     .album-grid   { grid-template-columns: 1fr 1fr; gap: .6rem; }
-    .billede-grid { grid-template-columns: 1fr 1fr; gap: .4rem; }
+    .image-grid { grid-template-columns: 1fr 1fr; gap: .4rem; }
 }
 </style>
 CSS;
@@ -235,24 +235,24 @@ require __DIR__ . '/assets/_header.php';
      ALBUM – BILLEDVISNING
      ══════════════════════════════════════ -->
 
-<a href="galleri.php" class="tilbage-link">← All albums</a>
+<a href="gallery.php" class="back-link">← All albums</a>
 
 <header>
     <h1><?= e($album['name']) ?></h1>
     <?php if ($album['description']): ?>
         <p><?= e($album['description']) ?></p>
     <?php else: ?>
-        <p><?= count($billeder) ?> image<?= count($billeder) != 1 ? 's' : '' ?></p>
+        <p><?= count($images) ?> image<?= count($images) != 1 ? 's' : '' ?></p>
     <?php endif; ?>
 </header>
 
-<?php if (empty($billeder)): ?>
+<?php if (empty($images)): ?>
     <p>This album does not contain any images yet.</p>
 <?php else: ?>
 
-<div class="billede-grid">
-<?php foreach ($billeder as $idx => $b): ?>
-    <div class="billede-item"
+<div class="image-grid">
+<?php foreach ($images as $idx => $b): ?>
+    <div class="image-item"
          role="button" tabindex="0"
          aria-label="View image: <?= e($b['title'] ?: $b['filename']) ?>"
          onclick="openLightbox(<?= $idx ?>)"
@@ -261,7 +261,7 @@ require __DIR__ . '/assets/_header.php';
              alt="<?= e($b['title'] ?: '') ?>"
              loading="lazy">
         <?php if ($b['title'] || $b['description']): ?>
-        <div class="billede-overlay">
+        <div class="image-overlay">
             <?php if ($b['title']): ?>
                 <strong><?= e($b['title']) ?></strong>
             <?php endif; ?>
@@ -294,8 +294,8 @@ $billeder_js = array_map(fn($b) => [
     'src'   => UPLOAD_URL . $b['filename'],
     'title' => $b['title']       ?? '',
     'besk'  => $b['description'] ?? '',
-], $billeder);
-$ekstra_js = '<script>
+], $images);
+$extra_js = '<script>
 (function () {
     var data = ' . json_encode($billeder_js, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ';
     var aktiv = 0;
@@ -372,20 +372,20 @@ $ekstra_js = '<script>
 <?php foreach ($albums as $alb):
     $thumb = first_image($alb['id']);
 ?>
-    <a href="?album=<?= $alb['id'] ?>" class="album-kort">
+    <a href="?album=<?= $alb['id'] ?>" class="album-card">
         <?php if ($thumb): ?>
-            <img class="album-forside"
+            <img class="album-cover"
                  src="<?= e(UPLOAD_URL . $thumb['filename']) ?>"
                  alt="<?= e($alb['name']) ?>"
                  loading="lazy">
         <?php else: ?>
-            <div class="album-forside-tom">🖼</div>
+            <div class="album-cover-tom">🖼</div>
         <?php endif; ?>
         <div class="album-body">
             <h2><?= e($alb['name']) ?></h2>
-            <p class="meta"><?= (int)$alb['antal'] ?> image<?= $alb['antal'] != 1 ? 's' : '' ?></p>
+            <p class="meta"><?= (int)$alb['image_count'] ?> image<?= $alb['image_count'] != 1 ? 's' : '' ?></p>
             <?php if ($alb['description']): ?>
-                <p class="besk"><?= e(mb_strimwidth($alb['description'], 0, 90, '…')) ?></p>
+                <p class="description"><?= e(mb_strimwidth($alb['description'], 0, 90, '…')) ?></p>
             <?php endif; ?>
         </div>
     </a>

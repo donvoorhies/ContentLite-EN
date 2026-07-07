@@ -8,7 +8,7 @@ if (!defined('SITE_NAME')) {
 }
 ?>
 
-</main><!-- #hoved-content -->
+</main><!-- #main-content -->
 
 <!-- ════════════════════════════════════════════════════════════════════════════
      SIDEFOD
@@ -53,7 +53,7 @@ Lokalt script (altid tilstede):
 
 <script src="/assets/site.js"></script>-->
 
-<?php if (!empty($ekstra_js)) echo $ekstra_js; ?>
+<?php if (!empty($extra_js)) echo $extra_js; ?>
 
 </body>
 </html>

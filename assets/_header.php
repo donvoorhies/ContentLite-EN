@@ -53,7 +53,7 @@ $_kanonisk    = canonical_url();
 
     Disse custom properties er det eneste CSS der dikteres globalt.
     Tilpas dem frit til dit design – eller overstyr dem i dit eget stylesheet.
-    Alle sitespecifikke komponenter (nyheder, galleri) bruger KUN disse tokens,
+    Alle sitespecifikke komponenter (nyheder, gallery) bruger KUN disse tokens,
     så du kan skifte hele temaet ved at redigere ét sted.
     ════════════════════════════════════════════════════════════════════════════
     -->
@@ -107,7 +107,7 @@ $_kanonisk    = canonical_url();
     }
     .skip-link:focus-visible { top: 1rem; }
 
-    #hoved-nav {
+    #main-nav {
         display: flex;
         align-items: center;
     }
@@ -122,7 +122,7 @@ $_kanonisk    = canonical_url();
         cursor: pointer;
     }
 
-    #nav-liste {
+    #nav-list {
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -131,14 +131,14 @@ $_kanonisk    = canonical_url();
         padding: 0;
     }
 
-    #nav-liste a {
+    #nav-list a {
         text-decoration: none;
     }
 	
 	 @media (max-width: 767px) {
          #nav-toggle           { display: inline-flex; align-items: center; justify-content: center; }
-         #hoved-nav           { width: 100%; }
-            #nav-liste           {
+         #main-nav           { width: 100%; }
+            #nav-list           {
                 width: 100%;
                 margin-top: .75rem;
                 flex-direction: column;
@@ -150,12 +150,12 @@ $_kanonisk    = canonical_url();
                 transform: translateY(-4px);
                 transition: max-height .38s cubic-bezier(.22, .61, .36, 1), opacity .24s ease-out, transform .24s ease-out;
             }
-            #nav-liste[data-aaben="true"] {
+            #nav-list[data-open="true"] {
                 opacity: 1;
                 transform: translateY(0);
             }
             @media (prefers-reduced-motion: reduce) {
-                #nav-liste {
+                #nav-list {
                      transition: none;
                      transform: none;
                 }
@@ -182,19 +182,19 @@ $_kanonisk    = canonical_url();
         <link rel="stylesheet" href="/assets/site.css"> -->
 
 
-    <?php if (!empty($ekstra_css)) echo $ekstra_css; ?>
+    <?php if (!empty($extra_css)) echo $extra_css; ?>
 </head>
 <body<?= $_body_class ? ' class="' . e($_body_class) . '"' : '' ?>>
 
 <!-- Tilgængelighed: skip-link til hovedcontent -->
-<a href="#hoved-content" class="skip-link">Skip to content</a>
+<a href="#main-content" class="skip-link">Skip to content</a>
 
 <!-- ════════════════════════════════════════════════════════════════════════════
      SITETOPPE
      Kun semantisk HTML5. Layout styres af dit CSS.
      ════════════════════════════════════════════════════════════════════════════ -->
 <header role="banner">
-    <div class="site-header-indre"><!-- valgfrit wrapper-element til dit grid -->
+    <div class="site-header-inner"><!-- valgfrit wrapper-element til dit grid -->
 
         <!-- Logo / sitetitle -->
         <a href="/" class="site-logo" rel="home">
@@ -207,18 +207,18 @@ $_kanonisk    = canonical_url();
         </a>
 
         <!-- Primær navigation -->
-        <nav id="hoved-nav" aria-label="Primary navigation">
+        <nav id="main-nav" aria-label="Primary navigation">
 
             <!-- Hamburger-knap (kun synlig på mobil via dit CSS) -->
             <button type="button"
                     id="nav-toggle"
-                    aria-controls="nav-liste"
+                    aria-controls="nav-list"
                     aria-expanded="false"
                     aria-label="Open menu">
                 <span aria-hidden="true">&#9776;</span>
             </button>
 
-            <ul id="nav-liste" role="list">
+            <ul id="nav-list" role="list">
             <?php foreach (SITE_NAV as $punkt): ?>
                 <li>
                     <a href="<?= e($punkt['href']) ?>"
@@ -229,16 +229,16 @@ $_kanonisk    = canonical_url();
             <?php endforeach; ?>
             </ul>
 
-        </nav><!-- #hoved-nav -->
+        </nav><!-- #main-nav -->
 
-    </div><!-- .site-header-indre -->
+    </div><!-- .site-header-inner -->
 </header>
 
 <script>
 (function () {
     var knap = document.getElementById('nav-toggle');
-    var liste = document.getElementById('nav-liste');
-    if (!knap || !liste || knap.dataset.navInit === 'true') return;
+    var list = document.getElementById('nav-list');
+    if (!knap || !list || knap.dataset.navInit === 'true') return;
     knap.dataset.navInit = 'true';
 
     function isMobile() {
@@ -246,37 +246,37 @@ $_kanonisk    = canonical_url();
     }
 
     function setOpenState(open) {
-        liste.setAttribute('data-aaben', String(open));
+        list.setAttribute('data-open', String(open));
         knap.setAttribute('aria-expanded', String(open));
         if (isMobile()) {
             if (open) {
-                liste.style.maxHeight = liste.scrollHeight + 'px';
-                liste.style.opacity = '1';
+                list.style.maxHeight = list.scrollHeight + 'px';
+                list.style.opacity = '1';
             } else {
-                liste.style.maxHeight = '0px';
-                liste.style.opacity = '0';
+                list.style.maxHeight = '0px';
+                list.style.opacity = '0';
             }
         }
     }
 
     knap.addEventListener('click', function () {
         if (!isMobile()) return;
-        var open = liste.getAttribute('data-aaben') === 'true';
+        var open = list.getAttribute('data-open') === 'true';
         setOpenState(!open);
     });
 
     window.addEventListener('resize', function () {
         if (!isMobile()) {
-            liste.style.maxHeight = '';
-            liste.style.opacity = '';
+            list.style.maxHeight = '';
+            list.style.opacity = '';
             setOpenState(false);
         } else {
-            setOpenState(liste.getAttribute('data-aaben') === 'true');
+            setOpenState(list.getAttribute('data-open') === 'true');
         }
     });
 
     if (isMobile()) {
-        setOpenState(liste.getAttribute('data-aaben') === 'true');
+        setOpenState(list.getAttribute('data-open') === 'true');
     } else {
         setOpenState(false);
     }
@@ -284,7 +284,7 @@ $_kanonisk    = canonical_url();
 </script>
 
 <!-- Hoved-landmark – id bruges af skip-link -->
-<main id="hoved-content" tabindex="-1">
+<main id="main-content" tabindex="-1">
 <?php
 /*
  * ── BEMÆRK ─────────────────────────────────────────────────────────────────
