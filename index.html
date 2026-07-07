@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[Content | Lite] - a CRUD Project</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f5;
+            --text-color: #18181b;
+            --accent-color: #27272a;
+            --border-color: #d4d4d8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #09090b;
+                --text-color: #fafafa;
+                --accent-color: #e4e4e7;
+                --border-color: #27272a;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 4rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .logo {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .logo-part {
+            color: #71717a;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        p.lead {
+            font-size: 1.2rem;
+            color: #a1a1aa;
+            margin-bottom: 2rem;
+        }
+
+        .crud-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .crud-card {
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            background: rgba(128, 128, 128, 0.05);
+        }
+
+        .crud-card h3 {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .cta-section {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            padding: 0.75rem 1.5rem;
+            text-decoration: none;
+            font-weight: bold;
+            font-family: "Courier New", Courier, monospace;
+            border: 2px solid var(--text-color);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: transparent;
+            color: var(--text-color);
+        }
+
+        footer {
+            margin-top: 4rem;
+            font-size: 0.875rem;
+            color: #71717a;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">[Content <span class="logo-part">|</span> Lite]</div>
+    </header>
+
+    <main>
+        <section>
+            <h1>Maximum data control. Minimum overhead.</h1>
+            <p class="lead">A streamlined, simple CRUD application built for speed, simplicity, and zero distractions. Data management stripped down to its essential components.</p>
+        </section>
+
+        <section class="crud-grid">
+            <div class="crud-card">
+                <h3>[ Create ]</h3>
+                <p>Generate new entries instantly with a lightweight, optimized input pipeline. No unnecessary fields.</p>
+            </div>
+            <div class="crud-card">
+                <h3>[ Read ]</h3>
+                <p>Fetch and display records with rapid response times. Clean UI for maximum readability.</p>
+            </div>
+            <div class="crud-card">
+                <h3>[ Update ]</h3>
+                <p>Modify existing content on the fly. Real-time state handling ensures your data is always accurate.</p>
+            </div>
+            <div class="crud-card">
+                <h3>[ Delete ]</h3>
+                <p>Remove obsolete records permanently and securely. A clean slate when you need it.</p>
+            </div>
+        </section>
+
+        <section class="cta-section">
+            <h2>Technical Details</h2>
+            <p>Built as a proof-of-concept for efficient data handling. Feel free to explore the repository or view the live implementation.</p>
+            <br>
+            <a href="#" class="btn">View Source</a>
+            <a href="#" class="btn" style="background: transparent; color: var(--text-color);">Live Demo</a>
+        </section>
+    </main>
+
+    <footer>
+        &copy; 2026 // ContentLite Project
+    </footer>
+
+</body>
+</html>
