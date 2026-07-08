@@ -55,3 +55,5 @@ Change the password hash in `config.php` before production use.
 - `install.php` gets locked after setup
 - Replace placeholder database credentials before going live
 - And otherwise alter/tweak the necessary CSS-selectors params for your layout-requirements and -desires
+
+(Released under a GPL-2.0+ license)
