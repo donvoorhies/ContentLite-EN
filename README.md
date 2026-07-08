@@ -23,7 +23,7 @@ ContentLite is a lightweight PHP CMS with a news module, image gallery, admin pa
 2. Open `install.php` in the browser.
 3. Enter your database credentials.
 4. Optionally set a table prefix for shared databases.
-5. Complete installation and remove or protect `install.php`.
+5. Complete installation; `install.php` gets locked after setup.
 
 ## Default admin access
 
