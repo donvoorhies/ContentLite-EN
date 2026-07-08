@@ -52,5 +52,6 @@ Change the password hash in `config.php` before production use.
 
 - Set `SITE_BASE_URL` correctly in `config.php`
 - Confirm your upload directory is writable
-- Remove or lock down `install.php` after setup
+- `install.php` gets locked after setup
 - Replace placeholder database credentials before going live
+- And otherwise alter/tweak the necessary CSS-selectors params for your layout-requirements and -desires
