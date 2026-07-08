@@ -1,10 +1,202 @@
-#<Files "install.php">
-	<IfModule mod_authz_core.c>
-		Require all denied
-	</IfModule>
-	<IfModule !mod_authz_core.c>
-		Order allow,deny
-		Deny from all
-	</IfModule>
-#</Files>
+# .htaccess — ContentLite
+# Requires Apache 2.4 + mod_rewrite
+# ══════════════════════════════════════════════════════════════════════════════
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 1. PROTECT SENSITIVE FILES
+#    Block direct HTTP access to files that must never be reached via browser.
+#    Returns 403 Forbidden (not 404, which would reveal the file exists).
+# ══════════════════════════════════════════════════════════════════════════════
+
+# config.php, _header.php, _footer.php and all files starting with _
+# may only be included internally by PHP — never fetched directly.
+<FilesMatch "^(config\.php|_.*\.php)$">
+    Require all denied
+</FilesMatch>
+
+# schema.sql and install.php: block access after installation.
+# Ideally delete install.php from the server; this rule is a safety net.
+<FilesMatch "^(schema\.sql|install\.php)$">
+    Require all denied
+</FilesMatch>
+
+# General protection: block backup, log, config and editor files
+<FilesMatch "\.(sql|log|bak|bak2|orig|dist|ini|env|sh|swp|yml|yaml|lock)$">
+    Require all denied
+</FilesMatch>
+
+# Hidden files (dot-files), except .htaccess itself
+<FilesMatch "^\.(?!htaccess)">
+    Require all denied
+</FilesMatch>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 2. UPLOADS DIRECTORY: BLOCK PHP EXECUTION
+#    Prevents an attacker from uploading a .php file disguised as an image
+#    and then executing it via the browser.
+#    Alternatively place this block in /uploads/.htaccess instead.
+# ══════════════════════════════════════════════════════════════════════════════
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block PHP execution inside the uploads directory
+    RewriteCond %{REQUEST_URI} ^/uploads/ [NC]
+    RewriteRule \.php$ - [F,L]
+</IfModule>
+
+# Alternative (works without mod_rewrite, but requires a separate
+# /uploads/.htaccess file containing):
+#
+#   <FilesMatch "\.php[0-9]?$">
+#       Require all denied
+#   </FilesMatch>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 3. SECURITY HEADERS
+#    Sent with every response from Apache.
+# ══════════════════════════════════════════════════════════════════════════════
+
+<IfModule mod_headers.c>
+    # Prevent the browser from MIME-sniffing the content type
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Clickjacking protection: page may only be framed by the same origin
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Enable legacy browsers' built-in XSS filter (harmless on modern browsers)
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Referrer: send only the origin (not the full URL) to external sites
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # HSTS: enforce HTTPS for 1 year (enable ONLY once HTTPS is configured!)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Content Security Policy — adjust to your site's needs.
+    # The following is a sensible starting point for ContentLite:
+    #   - default-src 'self'   : only own resources by default
+    #   - script-src           : allow TinyMCE from jsDelivr CDN
+    #   - style-src            : allow Google Fonts and jsDelivr
+    #   - font-src             : allow Google Fonts
+    #   - img-src              : allow own images + data: (TinyMCE base64 thumbnails)
+    Header always set Content-Security-Policy "\
+default-src 'self'; \
+script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; \
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; \
+font-src 'self' https://fonts.gstatic.com; \
+img-src 'self' data:; \
+connect-src 'self'; \
+frame-ancestors 'self'"
+
+    # Hide Apache version number from error responses
+    Header always unset X-Powered-By
+    ServerSignature Off
+</IfModule>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4. HTTPS REDIRECT
+#    Uncomment once your SSL certificate is active.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} !=on
+#     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+# </IfModule>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5. WWW → NON-WWW (or vice versa)
+#    Choose ONE of the two blocks below — never both.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Option A: remove www  (www.example.com → example.com) ──
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+#     RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L]
+# </IfModule>
+
+# ── Option B: enforce www  (example.com → www.example.com) ──
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTP_HOST} !^www\. [NC]
+#     RewriteRule ^ https://www.%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+# </IfModule>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 6. PERFORMANCE — GZIP COMPRESSION
+# ══════════════════════════════════════════════════════════════════════════════
+
+<IfModule mod_deflate.c>
+    <IfModule mod_filter.c>
+        AddOutputFilterByType DEFLATE \
+            text/html \
+            text/css \
+            text/javascript \
+            text/xml \
+            text/plain \
+            application/javascript \
+            application/json \
+            application/xml \
+            image/svg+xml
+    </IfModule>
+</IfModule>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 7. PERFORMANCE — BROWSER CACHE (Expires headers)
+# ══════════════════════════════════════════════════════════════════════════════
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # HTML: no cache (content changes frequently)
+    ExpiresByType text/html                 "access plus 0 seconds"
+
+    # CSS and JavaScript: 1 week
+    ExpiresByType text/css                  "access plus 1 week"
+    ExpiresByType application/javascript    "access plus 1 week"
+
+    # Images: 1 month
+    ExpiresByType image/jpeg                "access plus 1 month"
+    ExpiresByType image/png                 "access plus 1 month"
+    ExpiresByType image/gif                 "access plus 1 month"
+    ExpiresByType image/webp                "access plus 1 month"
+    ExpiresByType image/svg+xml             "access plus 1 month"
+    ExpiresByType image/x-icon              "access plus 1 year"
+
+    # Fonts: 1 year
+    ExpiresByType font/woff                 "access plus 1 year"
+    ExpiresByType font/woff2                "access plus 1 year"
+</IfModule>
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 8. CUSTOM ERROR PAGES
+#    Create these files in the root of your site.
+# ══════════════════════════════════════════════════════════════════════════════
+
+ErrorDocument 403 /403.html
+ErrorDocument 404 /404.html
+ErrorDocument 500 /500.html
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 9. DIRECTORY LISTING — ALWAYS DISABLED
+# ══════════════════════════════════════════════════════════════════════════════
+
+Options -Indexes
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 10. CHARACTER SET
+# ══════════════════════════════════════════════════════════════════════════════
+
+AddDefaultCharset UTF-8
