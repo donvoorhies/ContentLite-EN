@@ -15,11 +15,17 @@
     Require all denied
 </FilesMatch>
 
-# schema.sql and install.php: block access after installation.
-# Ideally delete install.php from the server; this rule is a safety net.
-<FilesMatch "^(schema\.sql|install\.php)$">
+# schema.sql: never accessible via browser
+<FilesMatch "^schema\.sql$">
     Require all denied
 </FilesMatch>
+
+# install.php: accessible until install.lock exists, then permanently blocked
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{DOCUMENT_ROOT}/install.lock -f
+    RewriteRule ^install\.php$ - [F,L]
+</IfModule>
 
 # General protection: block backup, log, config and editor files
 <FilesMatch "\.(sql|log|bak|bak2|orig|dist|ini|env|sh|swp|yml|yaml|lock)$">
