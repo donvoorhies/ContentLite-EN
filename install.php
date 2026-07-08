@@ -283,10 +283,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </form>
 
-        <p class="hint">After a successful installation, delete or protect <code>install.php</code>.</p>
+<?php if ($messages && !$errors): ?>
+<p style="margin-top:1.5rem;padding:1rem;background:#fef2f2;border:2px solid #dc2626;border-radius:6px;color:#b91c1c;font-weight:600;">
+    ⚠️ Installation complete. <code>install.php</code> is now locked via
+    <code>install.lock</code>. For maximum security, <strong>delete both files
+    from the server</strong>.
+</p>
+<?php else: ?>
+<p class="hint">After a successful installation, delete or protect <code>install.php</code>.</p>
+<?php endif; ?>    
     </div>
 </body>
 </html>
-<?php// Create lock file to permanently block install.php via .htaccess
+<?php
+// Lock the installer — blocks further access via .htaccess
 file_put_contents(__DIR__ . '/install.lock', date('Y-m-d H:i:s'));
+$messages[] = 'OK: install.lock created — installer is now blocked.';
 ?>
