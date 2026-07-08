@@ -1,1 +1,24 @@
+# uploads/.htaccess — ContentLite
+# ══════════════════════════════════════════════════════════════════════════════
+# Place this file in /uploads/ to prevent uploaded files from being executed
+# as PHP — even if an attacker manages to upload a .php file disguised as
+# an image.
+# ══════════════════════════════════════════════════════════════════════════════
 
+# Block all PHP execution (all PHP variants)
+<FilesMatch "\.php[0-9]?$">
+    Require all denied
+</FilesMatch>
+
+# Allow only image formats — deny everything else
+<FilesMatch "(?i)\.(jpe?g|png|gif|webp)$">
+    Require all granted
+</FilesMatch>
+
+# Deny all other file types
+<FilesMatch "^(?!.*\.(jpe?g|png|gif|webp)$)">
+    Require all denied
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes
